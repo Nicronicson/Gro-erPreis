@@ -1,0 +1,15 @@
+{
+  "name": "grosserpreis",
+  "version": "1.0.0",
+  "description": "Tool to quickly create and present a show.",
+  "main": "main.js",
+  "dependencies": {
+    "electron": "^14.0.1"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "start": "electron ."
+  },
+  "author": "Nico Nußbaum",
+  "license": "ISC"
+}
