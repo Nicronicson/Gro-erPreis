@@ -2,17 +2,17 @@ const electron = require('electron');
 const url = require('url');
 const path = require('path');
 
-const {dialog} = require('electron').remote;
+const yaml = require('js-yaml');
 const fs = require('fs');
 
-const {app, BrowserWindow, Menu, ipcMain} = electron;
+const {app, BrowserWindow, Menu, ipcMain, dialog} = electron;
 
 let mainWindow;
-let openWindow;
-let newWindow;
-
 let presentWindow;
+// let openWindow;
+// let newWindow;
 
+let currentProjectPath;
 let currentProject;
 
 // Listen for app to be ready and open the mainWindow
@@ -42,29 +42,31 @@ const mainMenuTemplate = [
             {
                 label:'Neu',
                 click(){
-                    createNewWindow();
+                    // Create Project Dialog
                 }
             },
             {
                 label:'Öffnen',
                 click(){
-                    dialog.showOpenDialog((fileNames) => {
-                        // fileNames is an array that contains all the selected
-                        if(fileNames === undefined){
-                            console.log("No file selected");
-                            return;
+                    // Open Project Dialog
+                    dialog.showOpenDialogSync(mainWindow, {
+                        filters: [
+                            {name: 'YAML', extensions: ['yml']}
+                        ],
+                        properties: [
+                            'openFile'
+                        ]
+                    }).then(result => {
+                        console.log(result.canceled);
+                        console.log(result.filePaths);
+                        try {
+                            openProject(result.filePaths, yaml.load(fs.readFileSync(result.filePaths, 'utf-8')));
+                        } catch (err) {
+                            console.log(err);
                         }
-                    
-                        fs.readFile(filepath, 'utf-8', (err, data) => {
-                            if(err){
-                                alert("An error ocurred reading the file :" + err.message);
-                                return;
-                            }
-                    
-                            // Change how to handle the file content
-                            console.log("The file content is : " + data);
-                        });
-                    });
+                    }).catch(err => {
+                        console.log(err);
+                    })
                 }
             }
         ]
@@ -130,7 +132,7 @@ function createOpenWindow(){
     });
 // */
 
-// Handle create newWindow
+/* Handle create newWindow
 function createNewWindow(){
     // Create new Window
     newWindow = new BrowserWindow({
@@ -144,18 +146,19 @@ function createNewWindow(){
     newWindow.on('closed', function(){
         newWindow = null;
     });
-}
+} */
 
-// Catch project:create
-ipcMain.on('project:create', openProject);
+/* Catch project:create
+ipcMain.on('project:create', openProject); */
 /* Catch project:open
 ipcMain.on('project:open', openProject); */
 
-function openProject(e, project){
+function openProject(projectPath, project){
     // Close presentation if active
     if(presentWindow != null){
         presentWindow.close();
     }
 
     currentProject = project;
+    currentProjectPath = projectPath;
 }

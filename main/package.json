@@ -4,7 +4,8 @@
   "description": "Tool to quickly create and present a show.",
   "main": "main.js",
   "dependencies": {
-    "electron": "^14.0.1"
+    "electron": "^14.0.1",
+    "js-yaml": "^4.1.0"
   },
   "devDependencies": {},
   "scripts": {
