@@ -2,18 +2,25 @@ const electron = require('electron');
 const url = require('url');
 const path = require('path');
 
-const {app, BrowserWindow, Menu} = electron;
+const {dialog} = require('electron').remote;
+const fs = require('fs');
+
+const {app, BrowserWindow, Menu, ipcMain} = electron;
 
 let mainWindow;
 let openWindow;
 let newWindow;
+
+let presentWindow;
+
+let currentProject;
 
 // Listen for app to be ready and open the mainWindow
 app.on('ready', function(){
     // Create new Window
     mainWindow = new BrowserWindow({})
     // Load html into window
-    mainWindow.loadURL(path.join(__dirname, 'mainWindow.html'));
+    mainWindow.loadURL(path.join(__dirname, 'windows', 'mainWindow', 'mainWindow.html'));
 
     // Build menu
     let menu = Menu.buildFromTemplate(mainMenuTemplate);
@@ -41,7 +48,23 @@ const mainMenuTemplate = [
             {
                 label:'Öffnen',
                 click(){
-                    createOpenWindow();
+                    dialog.showOpenDialog((fileNames) => {
+                        // fileNames is an array that contains all the selected
+                        if(fileNames === undefined){
+                            console.log("No file selected");
+                            return;
+                        }
+                    
+                        fs.readFile(filepath, 'utf-8', (err, data) => {
+                            if(err){
+                                alert("An error ocurred reading the file :" + err.message);
+                                return;
+                            }
+                    
+                            // Change how to handle the file content
+                            console.log("The file content is : " + data);
+                        });
+                    });
                 }
             }
         ]
@@ -91,7 +114,7 @@ if(process.env.NODE_ENV !== 'production'){
     });
 }
 
-// Handle create openWindow
+/* Handle create openWindow
 function createOpenWindow(){
     // Create new Window
     openWindow = new BrowserWindow({
@@ -99,13 +122,13 @@ function createOpenWindow(){
         height: 300
     })
     // Load html into window
-    openWindow.loadURL(path.join(__dirname, 'openWindow.html'));
+    openWindow.loadURL(path.join(__dirname, 'windows', 'openWindow', 'openWindow.html'));
 
     // Release Memory when being closed
     openWindow.on('closed', function(){
         openWindow = null;
     });
-}
+// */
 
 // Handle create newWindow
 function createNewWindow(){
@@ -115,10 +138,24 @@ function createNewWindow(){
         height: 300
     })
     // Load html into window
-    newWindow.loadURL(path.join(__dirname, 'newWindow.html'));
+    newWindow.loadURL(path.join(__dirname, 'windows', 'newWindow', 'newWindow.html'));
 
     // Release Memory when being closed
     newWindow.on('closed', function(){
         newWindow = null;
     });
+}
+
+// Catch project:create
+ipcMain.on('project:create', openProject);
+/* Catch project:open
+ipcMain.on('project:open', openProject); */
+
+function openProject(e, project){
+    // Close presentation if active
+    if(presentWindow != null){
+        presentWindow.close();
+    }
+
+    currentProject = project;
 }
