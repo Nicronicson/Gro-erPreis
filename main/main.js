@@ -28,8 +28,14 @@ app.on('ready', function(){
     // Set menu
     Menu.setApplicationMenu(menu);
 
-    // Quit app when mainWindow is being closed
+    // When mainWindow is about to close
     mainWindow.on('close', function(){
+        // Save Project if any is opened
+        if(currentProject != null){
+            fs.writeFileSync(currentProjectPath, yaml.dump(currentProject));
+        }
+
+        // Quit App
         app.quit();
     });
 });
@@ -42,31 +48,13 @@ const mainMenuTemplate = [
             {
                 label:'Neu',
                 click(){
-                    // Create Project Dialog
+                    createProjectDialog();
                 }
             },
             {
                 label:'Öffnen',
                 click(){
-                    // Open Project Dialog
-                    dialog.showOpenDialogSync(mainWindow, {
-                        filters: [
-                            {name: 'YAML', extensions: ['yml']}
-                        ],
-                        properties: [
-                            'openFile'
-                        ]
-                    }).then(result => {
-                        console.log(result.canceled);
-                        console.log(result.filePaths);
-                        try {
-                            openProject(result.filePaths, yaml.load(fs.readFileSync(result.filePaths, 'utf-8')));
-                        } catch (err) {
-                            console.log(err);
-                        }
-                    }).catch(err => {
-                        console.log(err);
-                    })
+                    openProjectDialog();
                 }
             }
         ]
@@ -116,6 +104,81 @@ if(process.env.NODE_ENV !== 'production'){
     });
 }
 
+function createProjectDialog(){
+    // Create Project Dialog
+    dialog.showSaveDialog(mainWindow, {
+        defaultPath: 'name',
+        filters: [
+            {name: 'YAML', extensions: ['yml']}
+        ]
+    }).then(result => {
+        console.log(result.canceled);
+        console.log(result.filePath);
+        if(!result.canceled){
+            fs.writeFileSync(result.filePath, yaml.dump({
+                kategorie: [
+                    {
+                        name: 'Zeug',
+                        fragen: [
+                            {
+                                frage: 'Wer ist doof?',
+                                richtig: 'der Leser',
+                                falsch: [
+                                    'Hans Dieter'
+                                ]
+                            }
+                        ]
+                    }
+                ]                      
+            }));
+            
+            openProject(result.filePath, yaml.load(fs.readFileSync(result.filePath, 'utf-8')));
+        }
+    }).catch(err => {
+        console.log(err);
+    })
+}
+
+function openProjectDialog(){
+    // Open Project Dialog
+    dialog.showOpenDialog(mainWindow, {
+        filters: [
+            {name: 'YAML', extensions: ['yml']}
+        ],
+        properties: [
+            'openFile'
+        ]
+    }).then(result => {
+        console.log(result.canceled);
+        console.log(result.filePaths);
+        if(!result.canceled){
+            //TODO: add logic if file is valid
+            try {
+                openProject(result.filePaths[0], yaml.load(fs.readFileSync(result.filePaths[0], 'utf-8')));
+            } catch (err) {
+                console.log(err);
+            }
+        }
+    }).catch(err => {
+        console.log(err);
+    })
+}
+
+function openProject(projectPath, project){
+    // Close presentation if active
+    if(presentWindow != null){
+        presentWindow.close();
+    }
+
+    // Save Project if any is opened
+    if(currentProject != null){
+        fs.writeFileSync(currentProjectPath, yaml.dump(currentProject));
+    }
+
+    currentProject = project;
+    currentProjectPath = projectPath;
+}
+
 /* Handle create openWindow
 function createOpenWindow(){
     // Create new Window
@@ -152,13 +215,3 @@ function createNewWindow(){
 ipcMain.on('project:create', openProject); */
 /* Catch project:open
 ipcMain.on('project:open', openProject); */
-
-function openProject(projectPath, project){
-    // Close presentation if active
-    if(presentWindow != null){
-        presentWindow.close();
-    }
-
-    currentProject = project;
-    currentProjectPath = projectPath;
-}

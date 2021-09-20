@@ -1,0 +1,7 @@
+kategorie:
+  - name: Zeug
+    fragen:
+      - frage: Wer ist doof?
+        richtig: der Leser
+        falsch:
+          - Hans Dieter
