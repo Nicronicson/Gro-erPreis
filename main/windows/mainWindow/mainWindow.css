@@ -1,0 +1,7 @@
+.choosen{
+    background-color: rgb(100, 100, 100);
+}
+
+div.hover:hover{
+    cursor: pointer;
+}

@@ -1,7 +1,41 @@
+teams:
+  - Team Tretmühle
+  - Volle Kraft gegen die Wand
+  - Rudolfs Knuddeltrupp
 kategorie:
-  - name: Zeug
+  - name: Gargamüll
+    color:
+      - 150
+      - 20
+      - 20
     fragen:
       - frage: Wer ist doof?
         richtig: der Leser
         falsch:
           - Hans Dieter
+          - sabbern
+          - Tupperware
+  - name: Grantiger Grühnkohl
+    color:
+      - 70
+      - 70
+      - 70
+    fragen:
+      - frage: Ahhh?
+        richtig: Hans
+        falsch:
+          - Brumm
+          - Kabumm
+          - Sansiba
+  - name: Dumm
+    color:
+      - 70
+      - 70
+      - 70
+    fragen:
+      - frage: Frage?
+        richtig: Richtige Antwort
+        falsch:
+          - 1. Falsche Antwort
+          - 2. Falsche Antwort
+          - 3. Falsche Antwort

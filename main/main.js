@@ -1,3 +1,10 @@
+const type = {
+    ADD: 'add',
+	KATEGORIE: 'kategorie',
+    TEAM: 'team',
+    ERR: 'err'
+}
+
 const electron = require('electron');
 const url = require('url');
 const path = require('path');
@@ -8,17 +15,24 @@ const fs = require('fs');
 const {app, BrowserWindow, Menu, ipcMain, dialog} = electron;
 
 let mainWindow;
+let controlWindow;
 let presentWindow;
-// let openWindow;
-// let newWindow;
 
-let currentProjectPath;
-let currentProject;
+var currentProjectPath;
+var currentProject;
+
+let game;
 
 // Listen for app to be ready and open the mainWindow
 app.on('ready', function(){
     // Create new Window
-    mainWindow = new BrowserWindow({})
+    mainWindow = new BrowserWindow({
+        webPreferences: {
+            nodeIntegration: true,
+            contextIsolation: false,
+            enableRemoteModule: true
+        }
+    })
     // Load html into window
     mainWindow.loadURL(path.join(__dirname, 'windows', 'mainWindow', 'mainWindow.html'));
 
@@ -31,9 +45,7 @@ app.on('ready', function(){
     // When mainWindow is about to close
     mainWindow.on('close', function(){
         // Save Project if any is opened
-        if(currentProject != null){
-            fs.writeFileSync(currentProjectPath, yaml.dump(currentProject));
-        }
+        saveProject();
 
         // Quit App
         app.quit();
@@ -64,16 +76,16 @@ const mainMenuTemplate = [
         submenu:[
             {
                 label:'Beginnen',
-                accelerator: process.platform == 'darwin' ? 'Command+B' : 'CTRL+B',
                 click(){
-                    
+                    // Start presentation
+                    startPresentation();
                 }
             },
             {
                 label:'Stoppen',
-                accelerator: process.platform == 'darwin' ? 'Command+S' : 'CTRL+S',
                 click(){
-                    
+                    // End presentation
+                    endPresentation();
                 }
             }
         ]
@@ -112,19 +124,23 @@ function createProjectDialog(){
             {name: 'YAML', extensions: ['yml']}
         ]
     }).then(result => {
-        console.log(result.canceled);
-        console.log(result.filePath);
         if(!result.canceled){
             fs.writeFileSync(result.filePath, yaml.dump({
+                teams: [
+                    'Team Arschlöscher'
+                ],
                 kategorie: [
                     {
                         name: 'Zeug',
+                        color: [70, 70, 70],
                         fragen: [
                             {
                                 frage: 'Wer ist doof?',
-                                richtig: 'der Leser',
+                                richtig: 'Der Ventilator',
                                 falsch: [
-                                    'Hans Dieter'
+                                    'Hans Dieter',
+                                    'Johann Josef',
+                                    'Johannes Jeske'
                                 ]
                             }
                         ]
@@ -149,12 +165,14 @@ function openProjectDialog(){
             'openFile'
         ]
     }).then(result => {
-        console.log(result.canceled);
-        console.log(result.filePaths);
         if(!result.canceled){
-            //TODO: add logic if file is valid
             try {
-                openProject(result.filePaths[0], yaml.load(fs.readFileSync(result.filePaths[0], 'utf-8')));
+                project = yaml.load(fs.readFileSync(result.filePaths[0], 'utf-8'));
+
+                // Check if file is most likely valid <-- wrong
+                // console.log(project.kategorie[0].fragen[0].falsch[0]);
+
+                openProject(result.filePaths[0], project);
             } catch (err) {
                 console.log(err);
             }
@@ -164,54 +182,174 @@ function openProjectDialog(){
     })
 }
 
+// Called when opening a project
 function openProject(projectPath, project){
-    // Close presentation if active
-    if(presentWindow != null){
-        presentWindow.close();
-    }
+    // End presentation if active
+    endPresentation();
 
+    // Save Project if any is opened
+    saveProject();
+
+    currentProject = project;
+    currentProjectPath = projectPath;
+
+    // initiateProjectCreateMode on mainWindow
+    mainWindow.webContents.send('main:initiateProjectCreateMode', currentProject);
+}
+
+// Called when the project needs to be saved (closing, opening a project, ...)
+function saveProject(){
     // Save Project if any is opened
     if(currentProject != null){
         fs.writeFileSync(currentProjectPath, yaml.dump(currentProject));
     }
-
-    currentProject = project;
-    currentProjectPath = projectPath;
 }
 
-/* Handle create openWindow
-function createOpenWindow(){
-    // Create new Window
-    openWindow = new BrowserWindow({
-        width: 500,
-        height: 300
-    })
-    // Load html into window
-    openWindow.loadURL(path.join(__dirname, 'windows', 'openWindow', 'openWindow.html'));
+// Edits to the current project --------------------------------------------------
 
-    // Release Memory when being closed
-    openWindow.on('closed', function(){
-        openWindow = null;
+// Listeners ----------
+
+// Handle project change.rename
+ipcMain.on('project:change.rename', changeProjectRename);
+
+// Handle project change.add
+ipcMain.on('project:change.add', changeProjectAdd);
+
+// Functions ----------
+
+function changeProjectRename(e, projectInfos){
+    switch(projectInfos.type[0]){
+        case type.KATEGORIE:
+            i = 0;
+            while(currentProject.kategorie[i].name !== projectInfos.oldText){
+                i++;
+            }
+            currentProject.kategorie[i].name = projectInfos.newText;
+            break;
+        case type.TEAM:
+            i = 0;
+            while(currentProject.teams[i] !== projectInfos.oldText){
+                i++;
+            }
+            currentProject.teams[i] = projectInfos.newText;
+            break;
+    }
+}
+
+function changeProjectAdd(e, projectInfos){
+    switch(projectInfos.type[0]){
+        case type.KATEGORIE:
+            currentProject.kategorie.push({
+                name: projectInfos.text,
+                color: projectInfos.color,
+                fragen: [
+                    {
+                        frage: 'Frage?',
+                        richtig: 'Richtige Antwort',
+                        falsch: [
+                            '1. Falsche Antwort',
+                            '2. Falsche Antwort',
+                            '3. Falsche Antwort'
+                        ]
+                    }
+                ]
+            });
+            break;
+        case type.TEAM:
+            currentProject.teams.push(projectInfos.text)
+            break;
+    }
+}
+
+// Presentation --------------------------------------------------
+
+// Classes ----------
+class Game{
+    teams;
+    wrongAnswers;
+    categories;
+
+    constructor(teams, categories){
+        this.teams = teams;
+        this.categories = categories;
+    }
+}
+
+class Team{
+    name;
+    points;
+    correctQuestions;
+
+    constructor(name){
+        this.name = name;
+        this.points = 0;
+    }
+}
+
+class Category{
+    name;
+    color;
+    questions;
+
+    constructor(name, color, questions){
+        this.name = name;
+        this.color = color;
+        this.questions = questions;
+    }
+}
+
+class Question{
+    questionText;
+    rightAnswer;
+    wrongAnswers;
+
+    constructor(questionText, rightAnswer, wrongAnswers){
+        this.questionText = questionText;
+        this.rightAnswer = rightAnswer;
+        this.wrongAnswers = wrongAnswers;
+    }
+}
+
+// Functions ----------
+function validateProject(project){
+    valid = true;
+    if(project.teams.length < 2){
+        valid = false;
+    }
+    project.kategorie.forEach(kategorie => {
+        if(kategorie.fragen.length !== project.kategorie[0].fragen.length){
+            valid = false;
+        }
     });
-// */
+    return valid;
+}
 
-/* Handle create newWindow
-function createNewWindow(){
-    // Create new Window
-    newWindow = new BrowserWindow({
-        width: 500,
-        height: 300
-    })
-    // Load html into window
-    newWindow.loadURL(path.join(__dirname, 'windows', 'newWindow', 'newWindow.html'));
+function startPresentation(){
+    valid = validateProject(currentProject);
 
-    // Release Memory when being closed
-    newWindow.on('closed', function(){
-        newWindow = null;
-    });
-} */
+    if(valid){
+        initializeGame();
+        // Open other windows
+    }
 
-/* Catch project:create
-ipcMain.on('project:create', openProject); */
-/* Catch project:open
-ipcMain.on('project:open', openProject); */
+    // initiateProjectPresentMode on mainWindow
+    mainWindow.webContents.send('main:initiateProjectPresentMode', currentProject, valid);
+}
+
+function initializeGame(project){
+    
+}
+
+function endPresentation(){
+    if(presentWindow != null){
+        presentWindow.close();
+    }
+    if(controlWindow != null){
+        controlWindow.close();
+    }
+
+    game = null;
+
+    // initiateProjectCreateMode on mainWindow
+    mainWindow.webContents.send('main:initiateProjectCreateMode', currentProject);
+}

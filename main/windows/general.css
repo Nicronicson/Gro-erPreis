@@ -1,0 +1,77 @@
+html, body{
+    height: 100%;
+
+    margin: 0px;
+    padding: 0px;
+
+    overflow: hidden;
+
+    background-color: lightgray;
+    font-family: Arial;
+}
+
+h1{
+    text-align: center;
+}
+
+.team{
+    float: left;
+}
+
+.boxes{
+    min-width: 25px;
+
+    user-select: none;
+
+    margin: 5px;
+    padding: 5px;
+
+    border-color: rgb(70, 70, 70);
+    background-color: rgb(150, 150, 150);
+
+    border-width: 5px;
+    border-style: solid;
+    border-radius: 10px;
+
+    text-align: center;
+}
+
+.blue{
+    border-color: blue;
+    background-color: rgb(0, 115, 223);
+}
+
+.green{
+    border-color: green;
+    background-color: lightgreen;
+}
+
+.yellow{
+    border-color: yellow;
+    background-color: lightyellow;
+}
+
+.red{
+    border-color: red;
+    background-color: lightcoral;
+}
+
+#teamHeader{
+    float: left;
+    width: 100%;
+
+    border-bottom-width: 1px;
+    border-bottom-style: solid;
+}
+
+#topicBar{
+    /* 100% - height of team Header */
+    height: calc(100% - 50px); 
+    width: 300px;
+
+    overflow: auto;
+    float: left;
+
+    border-right-width: 1px;
+    border-right-style: solid;
+}
